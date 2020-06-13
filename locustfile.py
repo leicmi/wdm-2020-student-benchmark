@@ -1,5 +1,6 @@
 import random
 from typing import List
+from gevent.pool import Pool
 
 
 from locust import HttpLocust, TaskSet, TaskSequence, seq_task, between
@@ -23,12 +24,29 @@ def add_stock(self, item_idx: int):
                      name="/stock/add/[item_id]/[number]")
 
 
+def add_stock_amount(self, item_idx: int, amount: int):
+    self.client.post(f"{STOCK_URL}/stock/add/{self.item_ids[item_idx]}/{amount}",
+                     name="/stock/add/[item_id]/[number]")
+
+def check_stock_amount(self, item_idx: int, should: int):
+    response = self.client.get(f"{STOCK_URL}/stock/find/{self.item_ids[item_idx]}",
+                     name="/stock/find/[item_id]", catch_response=True)
+    if response.status_code != 200:
+        response.failure(response.text)
+    actual = response.json()['stock']
+    if actual == should:
+        response.success()
+    else:
+        response.failure(f"Stock amount({actual}) does not match expectations({should}).")
+
 def create_user(self):
     response = self.client.post(f"{USER_URL}/users/create", name="/users/create/")
     self.user_id = response.json()['user_id']
 
 def check_credit_user(self, info):
-    response = self.client.get(f"{USER_URL}/users/find/{self.user_id}", name=f"/users/find/ {info}")
+    response = self.client.get(f"{USER_URL}/users/find/{self.user_id}", name=f"/users/find/ {info}", catch_response=True)
+    if response.status_code != 200:
+        response.failure(response.text)
     balance = response.json()['credit']
     if balance == self.credit:
         response.success()
@@ -357,15 +375,84 @@ class LoadTest6(TaskSequence):
     @seq_task(7)
     def user_credit(self): check_credit_user(self, "LoadTest6")
 
+
+class LoadTest7(TaskSequence):
+    """
+    Tries to check out an order twice.
+    """
+    item_ids: List[str]
+    user_id: str
+    order_id: str
+    credit: int
+
+    def on_start(self):
+        self.item_ids = list()
+        self.user_id = ""
+        self.order_id = ""
+        self.credit = 0
+
+    def on_stop(self):
+        self.item_ids = list()
+        self.user_id = ""
+        self.order_id = ""
+        self.credit = 0
+
+    @seq_task(1)
+    def admin_creates_item(self): create_item(self)
+
+    @seq_task(2)
+    def admin_adds_stock_to_item(self): add_stock_amount(self, 0, 2)
+
+    @seq_task(3)
+    def user_creates_account(self): create_user(self)
+
+    @seq_task(4)
+    def user_adds_balance(self): add_balance_to_user(self)
+
+    @seq_task(5)
+    def user_creates_order(self): create_order(self)
+
+    @seq_task(6)
+    def user_adds_item_to_order(self): add_item_to_order(self, 0)
+
+    @seq_task(7)
+    def user_checks_out_order(self):
+        pool = Pool()
+        def checkout_order_ignore(self):
+            return self.client.post(f"{ORDER_URL}/orders/checkout/{self.order_id}",
+                name="/orders/checkout/[order_id]", catch_response=True)
+        responses = pool.map(checkout_order_ignore, [self, self])
+        if responses[0].status_code == 200:
+            if responses[1].status_code==200:
+                responses[0].failure("Both of the two parallel checkouts succeeded, only one should!")
+                responses[1].success()
+            else: 
+                responses[0].success()
+                responses[1].success()
+        else:
+            if responses[1].status_code==200:
+                responses[0].success()
+                responses[1].success()
+            else: 
+                responses[0].failure("None of the two parallel checkouts proceeded. This is the first.")
+                responses[1].failure("None of the two parallel checkouts proceeded. This is the second.")
+
+
+    @seq_task(7)
+    def check_stock(self):
+        check_stock_amount(self, 0, 1)
+
+
 class LoadTests(TaskSet):
     # [TaskSequence]: [weight of the TaskSequence]
     tasks = {
-        LoadTest1: 5,
-        LoadTest2: 30,
-        LoadTest3: 25,
-        LoadTest4: 20,
-        LoadTest5: 10,
-        LoadTest6: 10
+        LoadTest1: 0,
+        LoadTest2: 0,
+        LoadTest3: 0,
+        LoadTest4: 0,
+        LoadTest5: 0,
+        LoadTest6: 0,
+        LoadTest7: 9999
     }
 
 
