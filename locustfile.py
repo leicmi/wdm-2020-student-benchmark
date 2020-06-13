@@ -27,11 +27,19 @@ def create_user(self):
     response = self.client.post(f"{USER_URL}/users/create", name="/users/create/")
     self.user_id = response.json()['user_id']
 
+def check_credit_user(self, info):
+    response = self.client.get(f"{USER_URL}/users/find/{self.user_id}", name=f"/users/find/ {info}")
+    balance = response.json()['credit']
+    if balance == self.credit:
+        response.success()
+    else:
+        response.failure(f"Credit does not match.")
 
 def add_balance_to_user(self):
     balance_to_add = random.randint(10000, 100000)
     self.client.post(f"{USER_URL}/users/credit/add/{self.user_id}/{balance_to_add}",
                      name="/users/credit/add/[user_id]/[amount]")
+    self.credit = self.credit + balance_to_add
 
 
 def create_order(self):
@@ -113,16 +121,19 @@ class LoadTest2(TaskSequence):
     item_ids: List[str]
     user_id: str
     order_id: str
+    credit: int
 
     def on_start(self):
         self.item_ids = list()
         self.user_id = ""
         self.order_id = ""
+        self.credit = 0
 
     def on_stop(self):
         self.item_ids = list()
         self.user_id = ""
         self.order_id = ""
+        self.credit = 0
 
     @seq_task(1)
     def admin_creates_item(self): create_item(self)
@@ -153,16 +164,19 @@ class LoadTest3(TaskSequence):
     item_ids: List[str]
     user_id: str
     order_id: str
+    credit: int
 
     def on_start(self):
         self.item_ids = list()
         self.user_id = ""
         self.order_id = ""
+        self.credit = 0
 
     def on_stop(self):
         self.item_ids = list()
         self.user_id = ""
         self.order_id = ""
+        self.credit = 0
 
     @seq_task(1)
     def admin_creates_item1(self): create_item(self)
@@ -202,16 +216,19 @@ class LoadTest4(TaskSequence):
     item_ids: List[str]
     user_id: str
     order_id: str
+    credit: int
 
     def on_start(self):
         self.item_ids = list()
         self.user_id = ""
         self.order_id = ""
+        self.credit = 0
 
     def on_stop(self):
         self.item_ids = list()
         self.user_id = ""
         self.order_id = ""
+        self.credit = 0
 
     @seq_task(1)
     def admin_creates_item(self): create_item(self)
@@ -248,16 +265,19 @@ class LoadTest5(TaskSequence):
     item_ids: List[str]
     user_id: str
     order_id: str
+    credit: int
 
     def on_start(self):
         self.item_ids = list()
         self.user_id = ""
         self.order_id = ""
+        self.credit = 0
 
     def on_stop(self):
         self.item_ids = list()
         self.user_id = ""
         self.order_id = ""
+        self.credit = 0
 
     @seq_task(1)
     def admin_creates_item1(self): create_item(self)
@@ -292,6 +312,8 @@ class LoadTest5(TaskSequence):
     @seq_task(11)
     def user_checks_out_order(self): checkout_order_that_is_supposed_to_fail(self, 0)
 
+    @seq_task(12)
+    def user_credit(self): check_credit_user(self, "LoadTest5")
 
 class LoadTest6(TaskSequence):
     """
@@ -300,16 +322,19 @@ class LoadTest6(TaskSequence):
     item_ids: List[str]
     user_id: str
     order_id: str
+    credit: int
 
     def on_start(self):
         self.item_ids = list()
         self.user_id = ""
         self.order_id = ""
+        self.credit = 0
 
     def on_stop(self):
         self.item_ids = list()
         self.user_id = ""
         self.order_id = ""
+        self.credit = 0
 
     @seq_task(1)
     def admin_creates_item(self): create_item(self)
@@ -329,6 +354,8 @@ class LoadTest6(TaskSequence):
     @seq_task(6)
     def user_checks_out_order(self): checkout_order_that_is_supposed_to_fail(self, 1)
 
+    @seq_task(7)
+    def user_credit(self): check_credit_user(self, "LoadTest6")
 
 class LoadTests(TaskSet):
     # [TaskSequence]: [weight of the TaskSequence]
