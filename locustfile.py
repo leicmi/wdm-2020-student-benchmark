@@ -81,9 +81,9 @@ def checkout_order_that_is_supposed_to_fail(self, reason: int):
         response.success()
     else:
         if reason == 0:
-            response.failure("This was supposed to fail: Not enough stock")
+            response.failure("This was supposed to fail, but didn't: Not enough stock")
         else:
-            response.failure("This was supposed to fail: Not enough credit")
+            response.failure("This was supposed to fail, but didn't: Not enough credit")
 
 
 def make_items_stock_zero(self, item_idx: int):
