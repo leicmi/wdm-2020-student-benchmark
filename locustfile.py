@@ -5,10 +5,10 @@ from typing import List
 from locust import HttpLocust, TaskSet, TaskSequence, seq_task, between
 
 # replace the example urls and ports with the appropriate ones
-ORDER_URL = "http://127.0.0.1:5000"
-PAYMENT_URL = "http://127.0.0.1:5001"
-STOCK_URL = "http://127.0.0.1:5002"
-USER_URL = "http://127.0.0.1:5003"
+ORDER_URL = "http://10.97.199.231"
+PAYMENT_URL = ORDER_URL
+STOCK_URL = ORDER_URL
+USER_URL = ORDER_URL
 
 
 def create_item(self):
